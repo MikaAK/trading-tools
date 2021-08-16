@@ -1,0 +1,44 @@
+<div class='stock-chart_main-title'>
+  <h1><%= @symbol %> Price</h1>
+  <small><%= @date %></small>
+
+  <div id='stock-chart_main-window' style='height: 500px; width: 800px;'>
+  </div>
+</div>
+
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<script type="text/javascript">
+  google.charts.load('current', {'packages':['corechart']})
+  google.charts.setOnLoadCallback(drawChart)
+
+  function drawChart() {
+    var candles = <%= javascript_candles(@candles) %>
+
+    console.log(candles)
+
+    var data = google.visualization.arrayToDataTable(candles, true)
+
+    var options = {
+      legend: 'none',
+      candlestick: {
+        fallingColor: {
+          strokeWidth: 0,
+          fill: '#a52714' // Red
+        },
+
+        risingColor: {
+          strokeWidth: 0,
+          fill: '#0f9d58' // Green
+        }
+      }
+
+    }
+
+    var chart = new google.visualization.CandlestickChart(
+      document.getElementById('stock-chart_main-window')
+    )
+
+    chart.draw(data, options)
+  }
+</script>
+

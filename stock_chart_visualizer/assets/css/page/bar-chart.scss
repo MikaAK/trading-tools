@@ -1,0 +1,49 @@
+$bar-width: 15px;
+
+ol.stock-chart_bar-container {
+  list-style-type: none;
+  margin: 0 auto;
+  display: flex;
+  position: relative;
+  width: $bar-width * 31;
+}
+
+
+.stock-chart_bar-container li {
+  width: $bar-width;
+  display: flex;
+  flex-direction: column;
+  margin-top: 200px;
+
+  &:not(:first-of-type) {
+    margin-left: 2px;
+  }
+
+  &.stock-chart_bar--positive {
+    .stock-chart_bar-high,
+    .stock-chart_bar-low,
+    .stock-chart_bar-range {
+      background-color: green;
+    }
+  }
+
+  &.stock-chart_bar--negative {
+    .stock-chart_bar-high,
+    .stock-chart_bar-low,
+    .stock-chart_bar-range  {
+      background-color: red;
+    }
+  }
+
+  .stock-chart_bar-high,
+  .stock-chart_bar-low {
+    min-width: 2px;
+    width: 2px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .stock-chart_bar-range {
+    // width: 100%;
+  }
+}

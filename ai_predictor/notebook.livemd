@@ -1,0 +1,244 @@
+# Ai Predictor
+
+## Ideas
+
+Each day we want to gather and predict the results of certain indexes and stocks and predict their result, we then 
+use this result in order to see if we are accurate over a longer period of time, say 1 week
+
+## Variable Setup
+
+```elixir
+ai_prediction_project_path = Path.expand("~/Documents/trading-tools/ai_predictor")
+symbol_predictions_path = Path.join(ai_prediction_project_path, "/priv/predictions")
+```
+
+## Loading Data
+
+```elixir
+load_symbol_folder = fn symbol ->
+  symbol_folder_path = Path.join(symbol_predictions_path, symbol)
+
+  symbol_record_files = File.ls!(symbol_folder_path)
+
+  {symbol, symbol_record_files}
+end
+
+load_symbol_records = fn {symbol, daily_records} ->
+  daily_predictions =
+    Enum.map(daily_records, fn date ->
+      {prediction, _} =
+        [symbol_predictions_path, symbol, date]
+        |> Path.join()
+        |> File.read!()
+        |> Float.parse()
+
+      %{date: Date.from_iso8601!(date), prediction: prediction}
+    end)
+
+  {symbol, daily_predictions}
+end
+
+predictions =
+  symbol_predictions_path
+  |> File.ls!()
+  |> Enum.map(load_symbol_folder)
+  |> Enum.map(load_symbol_records)
+
+# min_max_scaler = fn numbers ->
+#   {min, max} = Enum.min_max(numbers)
+
+#   if abs(min - max) < 5 do
+#     [min - 3, max + 3]
+#   else
+#     [min, max]
+#   end
+# end
+
+# visualization_data = Enum.map(predictions, fn {symbol, symbol_predictions} -> 
+#   Enum.map(symbol_predictions, fn prediction ->
+#     prediction
+#       |> Map.put(:symbol, symbol)
+#       |> Map.update!(:date, &Date.to_iso8601/1)
+#   end)
+# end)
+
+# create_prediction_chart_def = fn predictions ->
+#   %{symbol: symbol} = hd(predictions)
+
+#   VegaLite.new(title: symbol)
+#     |> VegaLite.mark(:line)
+#     |> VegaLite.encode_field(:x, "date", time_unit: :date, type: :ordinal, title: "")
+#     |> VegaLite.transform(filter: "datum.symbol == '#{symbol}'")
+#     |> VegaLite.encode_field(:y, "prediction",
+#       title: "",
+#       type: :quantitative,
+#       scale: [domain: min_max_scaler.(Enum.map(predictions, &(&1.prediction)))]
+#     )
+# end
+
+# [width: 500, height: 200, title: "Predictions"]
+#   |> VegaLite.new()
+#   |> VegaLite.data_from_values(List.flatten(visualization_data))
+#   |> VegaLite.concat(Enum.map(visualization_data, create_prediction_chart_def))
+#   |> Kino.render
+```
+
+## Getting the actual closing rates for the dates recorded
+
+```elixir
+current_year = DateTime.now!("America/New_York").year
+
+load_symbol_closing_prices = fn symbol ->
+  {:ok, symbol_data} = AiPredictor.DatasetDownloader.load(symbol, current_year)
+
+  Enum.reduce(symbol_data, %{}, fn %{close: close, date: date}, acc ->
+    Map.put(acc, date, close)
+  end)
+end
+
+symbol_data =
+  Enum.reduce(predictions, %{}, fn {symbol, _}, acc ->
+    Map.put(acc, symbol, load_symbol_closing_prices.(symbol))
+  end)
+
+actual_closing_prices =
+  Enum.reduce(predictions, %{}, fn {symbol, predictions}, acc ->
+    closing_prices =
+      Enum.reduce(predictions, %{}, fn %{date: date}, acc ->
+        Map.put(acc, date, symbol_data[symbol][date])
+      end)
+
+    Map.put(acc, symbol, closing_prices)
+  end)
+```
+
+## Compare and check prediction accuracy
+
+```elixir
+put_closing_price = fn symbol ->
+  fn %{date: date} = prediction ->
+    Map.put(prediction, :actual_close, actual_closing_prices[symbol][date])
+  end
+end
+
+add_offset_stats = fn
+  %{actual_close: nil} = prediction ->
+    Map.merge(prediction, %{
+      difference: nil,
+      difference_from_close_percentage: nil
+    })
+
+  prediction ->
+    offset_stats =
+      Map.merge(prediction, %{
+        difference: prediction.actual_close - prediction.prediction,
+        difference_from_close_percentage:
+          (prediction.prediction - prediction.actual_close) / prediction.actual_close * 100
+      })
+end
+
+symbol_prediction_data =
+  Enum.into(predictions, %{}, fn {symbol, symbol_predictions} ->
+    symbol_data =
+      symbol_predictions
+      |> Stream.map(put_closing_price.(symbol))
+      |> Enum.map(add_offset_stats)
+
+    # , average_percentile_diff: , average_diff: 
+    {symbol, symbol_data}
+  end)
+```
+
+## Visualize Accuracy Results
+
+```elixir
+dataset_accuracy_by_symbol =
+  symbol_prediction_data
+  |> Enum.map(fn {symbol, predictions} ->
+    valid_prediction_difference_percentages =
+      predictions
+      |> Stream.map(& &1.difference_from_close_percentage)
+      |> Stream.reject(&is_nil/1)
+      |> Enum.map(&abs/1)
+
+    %{
+      symbol: symbol,
+      prediction_accuracy:
+        Enum.sum(valid_prediction_difference_percentages) /
+          length(valid_prediction_difference_percentages)
+    }
+  end)
+  |> Enum.reject(&(&1.symbol in ["NVDA"]))
+
+[width: 750, height: 200, title: "Inaccuracy by Stock"]
+|> VegaLite.new()
+|> VegaLite.data_from_values(dataset_accuracy_by_symbol)
+|> VegaLite.mark(:bar)
+|> VegaLite.encode_field(:x, "symbol", type: :nominal, title: "")
+|> VegaLite.encode_field(:y, "prediction_accuracy",
+  title: "",
+  type: :quantitative
+  # scale: [domain: [0, 100]]
+)
+|> Kino.render()
+```
+
+## Visualize Prediction Results
+
+```elixir
+dataset_range = fn symbol_series ->
+  {actual_min_number, actual_max_number} =
+    symbol_series
+    |> Stream.map(& &1.actual_close)
+    |> Enum.min_max()
+
+  {predicted_min_number, predicted_max_number} =
+    symbol_series
+    |> Stream.map(& &1.prediction)
+    |> Enum.min_max()
+
+  {
+    Enum.min([actual_min_number, predicted_min_number]),
+    Enum.max([actual_max_number, predicted_max_number])
+  }
+end
+
+visualize_symbol_data = fn symbol ->
+  symbol_series =
+    symbol_prediction_data[symbol]
+    |> Stream.reject(&is_nil(&1.actual_close))
+    |> Enum.sort_by(& &1.date)
+    |> Enum.map(fn data -> Map.update!(data, :date, &Date.to_iso8601/1) end)
+
+  {min_number, max_number} = dataset_range.(symbol_series)
+
+  [width: 750, height: 200, title: "#{symbol} Accuracy"]
+  |> VegaLite.new()
+  |> VegaLite.data_from_values(symbol_series)
+  |> VegaLite.layers([
+    VegaLite.new()
+    |> VegaLite.mark(:line)
+    |> VegaLite.encode_field(:x, "date", time_unit: :date, type: :ordinal, title: "Date")
+    |> VegaLite.encode_field(:y, "actual_close",
+      title: "Actual vs Prediction",
+      type: :quantitative,
+      scale: [domain: [min_number, max_number]]
+    ),
+    VegaLite.new()
+    |> VegaLite.mark(:line, color: "#f00", stroke_dash: [4, 6])
+    |> VegaLite.encode_field(:x, "date", time_unit: :date, type: :ordinal, title: "Date")
+    |> VegaLite.encode_field(:y, "prediction",
+      title: "Actual vs Prediction",
+      type: :quantitative,
+      scale: [domain: [min_number, max_number]]
+    )
+  ])
+  |> Kino.render()
+end
+
+symbol_prediction_data
+|> Enum.reject(fn {_, symbol_data} -> length(symbol_data) <= 1 end)
+|> Enum.each(fn {symbol, _symbol_data} ->
+  visualize_symbol_data.(symbol)
+end)
+```
