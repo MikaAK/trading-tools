@@ -1,19 +1,27 @@
 # StockChartVisualizer
 
-To start your Phoenix server:
+Used to generate stock pictures for a large period of time.
 
-  * Install dependencies with `mix deps.get`
-  * Install Node.js dependencies with `npm install` inside the `assets` directory
-  * Start Phoenix endpoint with `mix phx.server`
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+To use this first startup chromedriver
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+```bash
+$ chromedriver  --headless --disable-gpu --disable-software-rasterizer
+```
 
-## Learn more
+Then startup the server
+```bash
+$ iex -S mix phx.server
+```
 
-  * Official website: https://www.phoenixframework.org/
-  * Guides: https://hexdocs.pm/phoenix/overview.html
-  * Docs: https://hexdocs.pm/phoenix
-  * Forum: https://elixirforum.com/c/phoenix-forum
-  * Source: https://github.com/phoenixframework/phoenix
+Finally run the `download_charts.exs` script
+
+```bash
+$ elixir ./download_charts.exs
+```
+
+### Modifications
+To modify the stocks being captured you can go to the `download_charts.ex` and
+set the `generation_symbols` list to include the symbols you wish to capture
+
+One gotcha currently is that the `start_year` is fixed so it's currently impossible to run for multiple stocks at the same time if there is no start year overlap

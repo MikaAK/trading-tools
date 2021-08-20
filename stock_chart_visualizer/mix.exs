@@ -44,6 +44,7 @@ defmodule StockChartVisualizer.MixProject do
       {:nimble_csv, "~> 1.1"},
       {:finch, "~> 0.8"},
       {:plug_cowboy, "~> 2.0"},
+      {:con_cache, "~> 1.0"},
       {:tzdata, "~> 1.1"}
     ]
   end

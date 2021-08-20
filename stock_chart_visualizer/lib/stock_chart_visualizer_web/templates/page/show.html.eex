@@ -1,8 +1,5 @@
 <div class='stock-chart_main-title'>
-  <h1><%= @symbol %> Price</h1>
-  <small><%= @date %></small>
-
-  <div id='stock-chart_main-window' style='height: 500px; width: 800px;'>
+  <div id='stock-chart_main-window'>
   </div>
 </div>
 
@@ -13,8 +10,6 @@
 
   function drawChart() {
     var candles = <%= javascript_candles(@candles) %>
-
-    console.log(candles)
 
     var data = google.visualization.arrayToDataTable(candles, true)
 
@@ -34,11 +29,18 @@
 
     }
 
-    var chart = new google.visualization.CandlestickChart(
-      document.getElementById('stock-chart_main-window')
-    )
+    var chartMainWindow = document.getElementById('stock-chart_main-window')
+
+    chartMainWindow.setAttribute('style', 'height: 100vh; width: 100vw;')
+
+    var chart = new google.visualization.CandlestickChart(chartMainWindow)
 
     chart.draw(data, options)
+
+    var groupElements = chartMainWindow.querySelectorAll('svg > g > g')
+
+    groupElements[2].remove()
+    groupElements[0].firstChild.remove()
   }
 </script>
 

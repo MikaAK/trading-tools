@@ -13,7 +13,9 @@ defmodule StockChartVisualizer.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: StockChartVisualizer.PubSub},
       # Start the Endpoint (http/https)
-      StockChartVisualizerWeb.Endpoint
+      StockChartVisualizerWeb.Endpoint,
+
+      {ConCache, [name: :dataset_cache, ttl_check_interval: false]}
       # Start a worker by calling: StockChartVisualizer.Worker.start_link(arg)
       # {StockChartVisualizer.Worker, arg}
     ]

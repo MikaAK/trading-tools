@@ -1,23 +1,47 @@
 defmodule StockChartVisualizer.DatasetDownloader do
-  @dataset_path "#{:code.priv_dir(:stock_chart_visualizer)}/datasets"
+  require Logger
 
   alias NimbleCSV.RFC4180, as: CSV
+
+  @dataset_path "#{:code.priv_dir(:stock_chart_visualizer)}/datasets"
 
   def csv_path(symbol), do: "#{@dataset_path}/#{symbol}.csv"
 
   def load(symbol, start_year \\ 1995) do
-    with {:ok, csv_string} <- load_csv(symbol, start_year),
-         :ok <- write_file(csv_path(symbol), csv_string) do
-      csv = CSV.parse_string(csv_string)
+    ConCache.get_or_store(:dataset_cache, symbol, fn ->
+      with {:ok, csv_string} <- load_csv(symbol, start_year) do
+        csv = CSV.parse_string(csv_string)
 
-      {:ok, deserialize_csv(csv)}
+        {:ok, deserialize_csv(csv)}
+      end
+    end)
+  end
+
+  def load_csv(symbol, start_year) do
+    with {:error, %{code: :not_found}} <- load_csv_file(csv_path(symbol)),
+         {:ok, csv_string} <- load_csv_from_url(symbol, start_year),
+         :ok <- write_file(csv_path(symbol), csv_string) do
+      {:ok, csv_string}
     end
   end
 
-  defp load_csv(symbol, start_year) do
+  defp load_csv_file(csv_path) do
+    case File.read(csv_path) do
+      {:error, :enoent} -> {:error, %{code: :not_found}}
+      {:ok, csv_string} ->
+        Logger.debug("Found existing file for symbol at #{csv_path}")
+
+        {:ok, csv_string}
+    end
+  end
+
+  defp load_csv_from_url(symbol, start_year) do
+    Logger.debug("Requesting #{symbol} data from #{start_year}")
+
     res = :get
       |> Finch.build(build_url(symbol, start_year))
       |> Finch.request(StockChartVisualizer.Finch)
+
 
     case res do
       {:ok, %Finch.Response{body: body, status: 200}} -> {:ok, body}
@@ -45,6 +69,8 @@ defmodule StockChartVisualizer.DatasetDownloader do
     with {:error, :enoent} <- File.write(path, contents),
          :ok <- File.mkdir_p(String.replace(path, ~r/[^\/]+$/, "")),
          :ok <- File.touch(path) do
+      Logger.debug("Writing stock data #{path}")
+
       File.write(path, contents)
     end
   end

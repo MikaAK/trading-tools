@@ -1,5 +1,4 @@
 /* This file is for your main application css. */
-@import "./phoenix.css";
 @import "./page/bar-chart";
 
 /* Alerts and form errors */
@@ -34,4 +33,18 @@
   color: #a94442;
   display: block;
   margin: -1rem 0 2rem;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.stock-chart_main-title {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
