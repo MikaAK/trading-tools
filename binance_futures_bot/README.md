@@ -1,5 +1,8 @@
 # BinanceFuturesBot
 
+Uses Webhooks from tradingview to trigger trade strategies
+
+
 To start your Phoenix server:
 
   * Install dependencies with `mix deps.get`

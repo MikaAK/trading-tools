@@ -12,6 +12,7 @@ defmodule BinanceFuturesBotWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug BinanceFuturesBotWeb.SecretPlug
   end
 
   scope "/", BinanceFuturesBotWeb do
