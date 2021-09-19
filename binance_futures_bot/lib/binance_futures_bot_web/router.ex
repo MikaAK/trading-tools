@@ -20,6 +20,12 @@ defmodule BinanceFuturesBotWeb.Router do
     live "/", PageLive, :index
   end
 
+  scope "/", BinanceFuturesBotWeb do
+    pipe_through :api
+
+    resources "/webhook", WebhookController, only: [:create]
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", BinanceFuturesBotWeb do
   #   pipe_through :api

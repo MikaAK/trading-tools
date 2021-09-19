@@ -15,6 +15,9 @@ config :binance_futures_bot, BinanceFuturesBotWeb.Endpoint,
   pubsub_server: BinanceFuturesBot.PubSub,
   live_view: [signing_salt: "dx4qFI0M"]
 
+config :binance_futures_bot,
+  webhook_secret: "<NEED_TO_SET_THIS>"
+
 # Configures Elixir's Logger
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",
