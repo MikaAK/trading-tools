@@ -7,14 +7,12 @@ defmodule BinanceFuturesBot.Application do
 
   def start(_type, _args) do
     children = [
-      # Start the Telemetry supervisor
       BinanceFuturesBotWeb.Telemetry,
-      # Start the PubSub system
       {Phoenix.PubSub, name: BinanceFuturesBot.PubSub},
-      # Start the Endpoint (http/https)
-      BinanceFuturesBotWeb.Endpoint
-      # Start a worker by calling: BinanceFuturesBot.Worker.start_link(arg)
-      # {BinanceFuturesBot.Worker, arg}
+
+      BinanceFuturesBotWeb.Endpoint,
+
+      {BinanceFuturesBot.TradeManager, name: :mika}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

@@ -1,4 +1,4 @@
-defmodule BinanceFuturesBot.TradeManager.ReversalShort do
+defmodule BinanceFuturesBot.TradeManager.Server.ReversalShort do
   @moduledoc """
   This module encapsulates the strategy for when we want to
   reverse a rising chart and take a short position
@@ -6,10 +6,10 @@ defmodule BinanceFuturesBot.TradeManager.ReversalShort do
 
   require Logger
 
-  alias BinanceFuturesBot.TradeManager.State
+  alias BinanceFuturesBot.TradeManager.Server.State
 
   def run(%State{trade_in_progress?: true} = state) do
-    {{:ok, :trade_in_progress}, state}
+    {{:ok, {:trade_in_progress, state}}, state}
   end
 
   def run(%State{

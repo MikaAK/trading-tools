@@ -1,4 +1,4 @@
-defmodule BinanceFuturesBot.TradeManager.ReversalLong do
+defmodule BinanceFuturesBot.TradeManager.Server.ReversalLong do
   @moduledoc """
   This module encapsulates the strategy for when we want to
   reverse a falling chart and take a long position
@@ -6,12 +6,12 @@ defmodule BinanceFuturesBot.TradeManager.ReversalLong do
 
   require Logger
 
-  alias BinanceFuturesBot.TradeManager.State
+  alias BinanceFuturesBot.TradeManager.Server.State
 
   def run(%State{trade_in_progress?: true} = state) do
     Logger.info("Trade in progress")
 
-    {{:ok, :trade_in_progress}, state}
+    {{:ok, {:trade_in_progress, state}}, state}
   end
 
   def run(%State{
