@@ -8,7 +8,7 @@ defmodule BinanceFuturesBot.BinanceBot do
 
   def events, do: @events
 
-  def handle_event(event_type, event_data) do
+  def handle_event("BOLLINGER_CROSS_OVER", event_data) do
 
   end
 end
