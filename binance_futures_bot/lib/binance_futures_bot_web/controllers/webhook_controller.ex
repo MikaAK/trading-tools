@@ -3,18 +3,16 @@ defmodule BinanceFuturesBotWeb.WebhookController do
 
   require Logger
 
+  alias BinanceFuturesBot.BinanceBot
+
+  @handled_events BinanceBot.events()
+
   action_fallback BinanceFuturesBotWeb.FallbackController
 
-  def create(conn, %{"type" => "BOLLINGER_CROSS_UNDER"}) do
-    Logger.info("Bollinger Cross-Under detected")
+  def create(conn, %{"type" => type} = params) when type in @handled_events do
+    Logger.info("Webhook event #{type} detected")
 
-    conn
-      |> put_status(200)
-      |> text("ok")
-  end
-
-  def create(conn, %{"type" => "BOLLINGER_CROSS_OVER"}) do
-    Logger.info("Bollinger Cross-Over detected")
+    BinanceBot.handle_event(type, params)
 
     conn
       |> put_status(200)
