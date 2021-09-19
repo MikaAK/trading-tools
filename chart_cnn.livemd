@@ -1,0 +1,69 @@
+# AI CNN
+
+## Install Deps
+
+```elixir
+Mix.install([:mogrify])
+```
+
+## Setup Helpers
+
+```elixir
+defmodule Util do
+  require Logger
+
+  @stock_data_root Path.join(File.cwd!(), "stock-dataset")
+
+  def find_image_paths(symbols) do
+    for symbol <- symbols, symbol?(symbol), file <- File.ls!(create_path(symbol)) do
+      Path.join(create_path(symbol), file)
+    end
+  end
+
+  defp create_path(symbol), do: Path.join(@stock_data_root, symbol)
+  defp symbol?(symbol), do: symbol =~ ~r/[A-Z]{3,4}/i
+
+  defp downscaled_path(image_path) do
+    String.replace(image_path, ".png", ".downscaled.png")
+  end
+
+  def load_image(image_path) do
+    downscale_image(image_path)
+    # case symbol |> Mogrify.open() do
+    # {:ok, %Imagineer.Image.PNG{pixels: pixels}} -> {symbol, pixels}
+    # {:error, e} -> 
+    #   Logger.error(inspect(e))
+
+    #   nil
+    # end
+  end
+
+  defp downscale_image(image_path) do
+    downscaled_file_path = downscaled_path(image_path)
+
+    if File.exists?(downscaled_file_path) do
+      File.read!(downscaled_file_path)
+    else
+      Logger.debug("Downscaling #{image_path}")
+
+      image_path
+      |> Mogrify.open()
+      |> Mogrify.custom("crop", "990x700+305+240")
+      |> Mogrify.custom("colorspace", "LinearGray")
+      |> Mogrify.resize("99x70")
+      |> Mogrify.save(path: downscaled_file_path)
+
+      File.read!(downscaled_file_path)
+    end
+  end
+end
+```
+
+## Load Images
+
+```elixir
+stock_image_pixels =
+  Util.find_image_paths(["SPY"])
+  |> Task.async_stream(&Util.load_image/1, max_concurrency: 10, timeout: :infinity)
+  |> Enum.to_list()
+```
