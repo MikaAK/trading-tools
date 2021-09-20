@@ -21,14 +21,19 @@ defmodule BinanceFuturesBot.TradeManager.Server.State do
   ]
 
   def seed_from_binance(name, symbol, opts) do
+    opts = Keyword.put_new(opts, :api_opts, [])
+
     case BinanceApi.futures_open_orders_by_symbol(symbol, opts[:api_opts]) do
       {:ok, [order]} -> create_state_from_order(name, symbol, order)
-      _ -> struct(%State{name: name, symbol: symbol}, Keyword.take(opts, [:api_opts, :api_module, :trade_max]))
+      _ ->
+        struct(
+          %State{name: name, symbol: symbol},
+          Keyword.take(opts, [:api_opts, :api_module, :trade_max])
+        )
     end
   end
 
   defp create_state_from_order(name, symbol, order) do
-    IO.inspect order
     %State{
       name: name,
       symbol: symbol,

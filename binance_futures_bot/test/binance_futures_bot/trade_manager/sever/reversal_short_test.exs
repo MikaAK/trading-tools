@@ -1,9 +1,9 @@
-defmodule BinanceFuturesBot.TradeManager.ReversalShortTest do
+defmodule BinanceFuturesBot.TradeManager.Server.ReversalShortTest do
   use ExUnit.Case, async: true
 
 
   alias BinanceFuturesBotWeb.Support.DateTimeHelpers
-  alias BinanceFuturesBot.TradeManager.{ReversalShort, State}
+  alias BinanceFuturesBot.TradeManager.Server.{ReversalShort, State}
 
   @symbol "BTCUSDT"
   @entry_price 1_000.00
@@ -18,16 +18,17 @@ defmodule BinanceFuturesBot.TradeManager.ReversalShortTest do
 
   describe "&run/1" do
     test "returns TRADE_IN_PROGRESS when trade started" do
-      state = %State{trade_in_progress?: true}
+      state = %State{trade_in_progress?: true, symbol: @symbol, name: :mika}
 
-      assert {{:ok, :trade_in_progress}, state} === ReversalShort.run(state)
+      assert {{:ok, {:trade_in_progress, state}}, state} === ReversalShort.run(state)
     end
 
     test "calculates state for trade with the current ticker price" do
       state = %State{
         symbol: @symbol,
         api_module: BinanceApiMock,
-        leverage: 10
+        leverage: 10,
+        name: :mika
       }
 
       assert {{:ok, %State{

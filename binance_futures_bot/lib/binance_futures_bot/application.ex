@@ -12,7 +12,7 @@ defmodule BinanceFuturesBot.Application do
 
       BinanceFuturesBotWeb.Endpoint,
 
-      {BinanceFuturesBot.TradeManager, name: :mika}
+      {BinanceFuturesBot.TradeManager, name: :mika_btc_usdt, symbol: "BTCUSDT"}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

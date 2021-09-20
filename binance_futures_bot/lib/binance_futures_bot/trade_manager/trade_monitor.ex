@@ -31,16 +31,16 @@ defmodule BinanceFuturesBot.TradeManager.TradeMonitor do
 
   def server_name(name), do: :"trade_manager_monitor_#{name}"
 
-  def active?(name_or_pid) do
-    GenServer.call(TradeMonitor, :active?)
+  def active?(name) do
+    GenServer.call(server_name(name), :active?)
   end
 
-  def activate(name_or_pid, trade_server_state) do
-    GenServer.cast(TradeMonitor, {:activate, trade_server_state})
+  def activate(name, trade_server_state) do
+    GenServer.cast(server_name(name), {:activate, trade_server_state})
   end
 
-  def handle_info(name_or_pid, trade_server_state) do
-    GenServer.cast(TradeMonitor, {:checkup_on_trade, trade_server_state})
+  def checkup_on_trade(name, trade_server_state) do
+    GenServer.cast(server_name(name), {:checkup_on_trade, trade_server_state})
   end
 
   def handle_call(:active, _, state) do
