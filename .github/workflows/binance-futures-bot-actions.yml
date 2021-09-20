@@ -1,0 +1,34 @@
+name: Binance Futures Actions
+
+on: [push, pull_request]
+
+jobs:
+  Test Binance Futures Bot:
+    runs-on: ubuntu-latest
+
+    container:
+      image: mikaak/elixir:1.12-alpine
+      env:
+        MIX_ENV: test
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Cache Deps & Build
+        uses: actions/cache@v2
+        with:
+          key: ${{runner.os}}-${{hashFiles('mix.lock')}}-deps-build-cache
+          path: |
+            ~/trading-tools/binance_futures_bot/deps
+            ~/trading-tools/binance_futures_bot/_build
+            !~/trading-tools/binance_futures_bot/_build/dev/lib/binance_futures_bot/
+
+      - name: Install Dependencies
+        run: cd ./binance_futures_bot && mix deps.get
+
+      - name: Compile Project
+        run: mix compile
+
+      - name: Run Tests
+        run: mix test
+
