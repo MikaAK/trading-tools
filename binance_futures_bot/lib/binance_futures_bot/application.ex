@@ -11,14 +11,18 @@ defmodule BinanceFuturesBot.Application do
       {Phoenix.PubSub, name: BinanceFuturesBot.PubSub},
 
       BinanceFuturesBotWeb.Endpoint,
-
-      {BinanceFuturesBot.TradeManager, name: :mika_btc_usdt, symbol: "BTCUSDT"}
-    ]
+    ] ++ trade_manager_children()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: BinanceFuturesBot.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  if Mix.env() === :test do
+    defp trade_manager_children, do: []
+  else
+    defp trade_manager_children, do: [{BinanceFuturesBot.TradeManager, name: :mika, symbol: "BTCUSDT"}]
   end
 
   # Tell Phoenix to update the endpoint configuration

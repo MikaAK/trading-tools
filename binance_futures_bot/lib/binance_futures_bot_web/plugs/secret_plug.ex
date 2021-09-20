@@ -1,4 +1,6 @@
 defmodule BinanceFuturesBotWeb.SecretPlug do
+  require Logger
+
   import Plug.Conn
 
   @behaviour Plug
@@ -22,6 +24,8 @@ defmodule BinanceFuturesBotWeb.SecretPlug do
 
   defp validate_signature(conn, _query_params) do
     error = %{code: :unauthorized, message: "secret is not correct"}
+
+    Logger.error("[SecretPlug] #{error.message}")
 
     conn |> send_resp(403, Jason.encode!(error)) |> halt
   end

@@ -1,7 +1,6 @@
 defmodule BinanceFuturesBot.TradeManager.Server.ReversalShortTest do
   use ExUnit.Case, async: true
 
-
   alias BinanceFuturesBotWeb.Support.DateTimeHelpers
   alias BinanceFuturesBot.TradeManager.Server.{ReversalShort, State}
 

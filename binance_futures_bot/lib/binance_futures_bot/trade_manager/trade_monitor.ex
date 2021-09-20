@@ -58,6 +58,6 @@ defmodule BinanceFuturesBot.TradeManager.TradeMonitor do
   end
 
   def handle_info(:checkup_on_trade, state) do
-
+    {:noreply, state}
   end
 end

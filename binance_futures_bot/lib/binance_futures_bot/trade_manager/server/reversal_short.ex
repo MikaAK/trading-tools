@@ -22,19 +22,20 @@ defmodule BinanceFuturesBot.TradeManager.Server.ReversalShort do
 
     case api_module.futures_ticker_price(symbol, api_opts) do
       {:ok, %{"price" => price}} ->
-        state = setup_trade(state, String.to_float(price))
+        case setup_trade(state, String.to_float(price)) do
+          {:ok, state} = res -> {res, state}
+          {:error, _} = e -> {e, state}
+        end
 
-        {{:ok, state}, state}
-
-      {:error, e} ->
+      {:error, e} = error ->
         Logger.error("Reversal short Error\n#{inspect e}")
 
-        {{:ok, state}, state}
+        {error, state}
     end
   end
 
   def setup_trade(%State{leverage: leverage} = state, entry_price) do
-    %{state |
+    {:ok, %{state |
       entry_price: entry_price,
       final_stop: entry_price + percentage_with_leverage(entry_price, leverage, 0.25),
       first_avg: entry_price + percentage_with_leverage(entry_price, leverage, 0.10),
@@ -42,7 +43,7 @@ defmodule BinanceFuturesBot.TradeManager.Server.ReversalShort do
       take_profit_price: entry_price - percentage_with_leverage(entry_price, leverage, 0.15),
       trade_started_at: DateTime.utc_now(),
       trade_in_progress?: true
-    }
+    }}
   end
 
   defp percentage_with_leverage(entry_price, leverage, percentage) do
