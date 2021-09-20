@@ -14,14 +14,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Cache Deps & Build
-        uses: actions/cache@v2
-        with:
-          key: ${{runner.os}}-${{hashFiles('mix.lock')}}-deps-build-cache
-          path: |
-            ~/trading-tools/binance_futures_bot/deps
-            ~/trading-tools/binance_futures_bot/_build
-            !~/trading-tools/binance_futures_bot/_build/dev/lib/binance_futures_bot/
+      # - name: Cache Deps & Build
+      #   uses: actions/cache@v2
+      #   with:
+      #     key: ${{hashFiles('mix.lock')}}-deps-build-cache
+      #     path: |
+      #       ./binance_futures_bot/deps
+      #       ./binance_futures_bot/_build
+      #       !./binance_futures_bot/_build/dev/lib/binance_futures_bot/
 
       - name: Install Dependencies
         run: cd ./binance_futures_bot && mix deps.get
