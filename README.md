@@ -1,4 +1,5 @@
 # Trading Tools
+![BinanceFuturesBot](https://github.com/MikaAK/trading-tools/actions/workflows/binance-futures-bot-actions.yml/badge.svg?branch=master)
 
 
 ### MonoRepo for:

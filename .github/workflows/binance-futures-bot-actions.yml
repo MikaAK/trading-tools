@@ -1,4 +1,4 @@
-name: Binance Futures Actions
+name: Binance Futures Bot
 
 on: [push, pull_request]
 
