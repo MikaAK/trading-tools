@@ -4,8 +4,6 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer.BinanceConnectorTest do
   alias BinanceFuturesBot.TradeManager.TradeServer.{State, BinanceConnector}
   alias BinanceFuturesBot.Support.OrderGenerator
 
-  @price 10_000
-  @quantity 0.01 # $100
   @symbol "BTCUSDT"
 
   defmodule MockBinanceApiLongAllOrders do
@@ -219,6 +217,7 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer.BinanceConnectorTest do
       state = %State{
         name: :mika_btc_usdt,
         symbol: @symbol,
+        api_module: MockBinanceApiOneAvgAllOrders,
         entry_price: 10_000.00,
         filled?: true,
         final_stop: 7_500.00,
@@ -229,11 +228,11 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer.BinanceConnectorTest do
         taken_second_avg?: false,
         trade_in_progress?: true,
         order_position: %State.OrderPosition{
-          entry_order: OrderGenerator.opened_position_order("BUY", "FILLED", @quantity, @price),
-          first_avg_order: OrderGenerator.open_limit_order("BUY", @quantity, @price),
-          second_avg_order: OrderGenerator.open_limit_order("BUY", @quantity, @price),
-          stop_order: OrderGenerator.open_stop_market_order("SELL", "NEW", @quantity, @price),
-          take_profit_order: OrderGenerator.open_take_profit_order("SELL", "NEW", @quantity, @price)
+          stop_order: MockBinanceApiOneAvgAllOrders.stop_order(),
+          entry_order: MockBinanceApiOneAvgAllOrders.entry_order(),
+          first_avg_order: %{MockBinanceApiOneAvgAllOrders.first_avg_order() | "status" => "NEW"},
+          second_avg_order: MockBinanceApiOneAvgAllOrders.second_avg_order(),
+          take_profit_order: MockBinanceApiOneAvgAllOrders.take_profit_order()
         }
       }
 
