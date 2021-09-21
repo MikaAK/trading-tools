@@ -1,53 +1,30 @@
-defmodule BinanceFuturesBot.TradeManager.Server.State do
-  alias BinanceFuturesBot.TradeManager.Server.State
+defmodule BinanceFuturesBot.TradeManager.TradeServer.BinanceConnector do
+  require Logger
+
+  alias BinanceFuturesBot.TradeManager.TradeServer.State
 
   @api_module_default BinanceApi
 
-  @enforce_keys [:symbol, :name]
-  defstruct [
-    :symbol,
-    :name,
-    :entry_price,
-    :final_stop,
-    :first_avg,
-    :second_avg,
-    :take_profit_price,
-    :trade_started_at,
-    :filled?,
-    :order_position,
-    api_module: BinanceApi,
-    api_opts: [],
-    trade_max: 100,
-    leverage: 100,
-    trade_in_progress?: false,
-    taken_first_avg?: false,
-    taken_second_avg?: false
-  ]
-
-  defmodule OrderPosition do
-    defstruct [
-      :entry_order,
-      :stop_order, :take_profit_order,
-      :first_avg_order, :second_avg_order
-    ]
-  end
-
-  def seed_from_binance(name, symbol, opts) do
+  def seed_from_api(name, symbol, opts) do
     opts = opts
       |> Keyword.put_new(:api_opts, [])
       |> Keyword.put_new(:api_module, @api_module_default)
 
     api_module = opts[:api_module]
+
     new_state = struct(
       %State{name: name, symbol: symbol},
       Keyword.take(opts, [:api_opts, :api_module, :trade_max])
     )
 
-    with {:ok, all_orders} <- api_module.futures_all_orders(),
+    with {:ok, all_orders} <- api_module.futures_all_orders(opts[:api_opts]),
          {:ok, current_position} <- determine_current_position(all_orders) do
       create_state_from_position(new_state, current_position)
     else
-      _ -> new_state
+      {:error, e} ->
+        Logger.error("[TradeServer.State.seed_from_api] Error #{inspect e}")
+
+        new_state
     end
   end
 
@@ -64,7 +41,7 @@ defmodule BinanceFuturesBot.TradeManager.Server.State do
   end
 
   defp convert_orders_to_order_position(current_position_orders) do
-    Enum.reduce(current_position_orders, %OrderPosition{}, fn
+    Enum.reduce(current_position_orders, %State.OrderPosition{}, fn
       (%{"orig_type" => "STOP_MARKET"} = order, acc_position) ->
         %{acc_position | stop_order: order}
 
@@ -140,7 +117,7 @@ defmodule BinanceFuturesBot.TradeManager.Server.State do
     Enum.take_while(orders, &(not (&1["reduce_only"] and &1["status"] === "FILLED")))
   end
 
-  defp create_state_from_position(state, %OrderPosition{} = position) do
+  defp create_state_from_position(state, %State.OrderPosition{} = position) do
     %{state |
       order_position: position,
       trade_started_at: DateTime.from_unix!(position.entry_order["time"], :millisecond),
@@ -184,4 +161,62 @@ defmodule BinanceFuturesBot.TradeManager.Server.State do
       taken_second_avg?: false
     }
   end
+
+  def checkup_on_trade(%State{trade_in_progress?: false} = state) do
+    Logger.debug("[TradeServer.BinanceConnector] No trade in progress...")
+
+    state
+  end
+
+  def checkup_on_trade(%State{api_module: api_module, api_opts: api_opts} = state) do
+    case api_module.futures_all_orders(api_opts) do
+      {:ok, all_orders} -> check_trades_completed(state, all_orders)
+
+      {:error, e} ->
+        Logger.error("[TradeServer.BinanceConnector] Error fetching orders for checkup #{inspect e}")
+
+        state
+    end
+  end
+
+  defp check_trades_completed(
+    %State{order_position: %State.OrderPosition{} = order_position} = state,
+    all_trades
+  ) do
+    updated_order_positions = maybe_update_position_orders(order_position, all_trades)
+
+    if updated_order_positions !== order_position do
+      create_state_from_position(state, updated_order_positions)
+    else
+      state
+    end
+  end
+
+  defp maybe_update_position_orders(order_positions, all_trades) do
+    all_trades_by_id = Enum.into(all_trades, %{}, &{&1["order_id"], &1})
+
+    order_positions
+      |> maybe_update_order(:entry_order, all_trades_by_id)
+      |> maybe_update_order(:first_avg_order, all_trades_by_id)
+      |> maybe_update_order(:second_avg_order, all_trades_by_id)
+      |> maybe_update_order(:stop_order, all_trades_by_id)
+      |> maybe_update_order(:take_profit_order, all_trades_by_id)
+  end
+
+  defp maybe_update_order(order_positions, order_key, all_trades_by_id) do
+    order_position = Map.get(order_positions, order_key)
+
+    case all_trades_by_id[order_position["order_id"]] do
+      ^order_position ->
+        Logger.debug("[TradeServer.BinanceConnector] Nothing changed in trade")
+
+        order_positions
+
+      updated_order ->
+        Logger.debug("[TradeServer.BinanceConnector] Position #{order_key} updated\nOrder: #{inspect updated_order}")
+
+        Map.put(order_positions, order_key, updated_order)
+    end
+  end
+
 end

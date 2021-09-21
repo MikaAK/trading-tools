@@ -1,8 +1,12 @@
-defmodule BinanceFuturesBot.TradeManager.Server.StateTest do
+defmodule BinanceFuturesBot.TradeManager.TradeServer.BinanceConnectorTest do
   use ExUnit.Case, async: true
 
-  alias BinanceFuturesBot.TradeManager.Server.State
+  alias BinanceFuturesBot.TradeManager.TradeServer.{State, BinanceConnector}
   alias BinanceFuturesBot.Support.OrderGenerator
+
+  @price 10_000
+  @quantity 0.01 # $100
+  @symbol "BTCUSDT"
 
   defmodule MockBinanceApiLongAllOrders do
     @price 10_000
@@ -28,7 +32,7 @@ defmodule BinanceFuturesBot.TradeManager.Server.StateTest do
       OrderGenerator.open_take_profit_order("SELL", "NEW", @quantity, @price * 1.25)
     end
 
-    def futures_all_orders do
+    def futures_all_orders(_ \\ []) do
       {:ok, Enum.reverse([
         entry_order(),
         first_avg_order(), second_avg_order(),
@@ -61,7 +65,7 @@ defmodule BinanceFuturesBot.TradeManager.Server.StateTest do
       OrderGenerator.open_take_profit_order("SELL", status, quantity, @price * 1.25)
     end
 
-    def futures_all_orders do
+    def futures_all_orders(_ \\ []) do
       {:ok, Enum.reverse([
         entry_order(10),
         first_avg_order(20), second_avg_order(10),
@@ -98,7 +102,7 @@ defmodule BinanceFuturesBot.TradeManager.Server.StateTest do
       OrderGenerator.open_take_profit_order("SELL", "NEW", @quantity, @price * 1.25)
     end
 
-    def futures_all_orders do
+    def futures_all_orders(_ \\ []) do
       {:ok, Enum.reverse([
         entry_order(),
         first_avg_order(), second_avg_order(),
@@ -107,9 +111,9 @@ defmodule BinanceFuturesBot.TradeManager.Server.StateTest do
     end
   end
 
-  describe "&seed_from_binance/3" do
+  describe "&seed_from_api/3" do
     test "uses api module to get all open order and all orders to create position and entry seed" do
-      state = State.seed_from_binance(:test, "BTCUSDT", api_module: MockBinanceApiLongAllOrders)
+      state = BinanceConnector.seed_from_api(:test, "BTCUSDT", api_module: MockBinanceApiLongAllOrders)
 
       assert %State{
         order_position: %State.OrderPosition{} = position,
@@ -140,7 +144,7 @@ defmodule BinanceFuturesBot.TradeManager.Server.StateTest do
     end
 
     test "returns proper results for when one average is taken" do
-      state = State.seed_from_binance(:test, "BTCUSDT", api_module: MockBinanceApiOneAvgAllOrders)
+      state = BinanceConnector.seed_from_api(:test, "BTCUSDT", api_module: MockBinanceApiOneAvgAllOrders)
 
       assert %State{
         order_position: %State.OrderPosition{} = position,
@@ -175,7 +179,7 @@ defmodule BinanceFuturesBot.TradeManager.Server.StateTest do
     end
 
     test "properly filters a long order list" do
-      state = State.seed_from_binance(:test, "BTCUSDT", api_module: MockBinanceApiTwoAvgAllOrders)
+      state = BinanceConnector.seed_from_api(:test, "BTCUSDT", api_module: MockBinanceApiTwoAvgAllOrders)
 
       assert %State{
         order_position: %State.OrderPosition{} = position,
@@ -207,6 +211,33 @@ defmodule BinanceFuturesBot.TradeManager.Server.StateTest do
         position.take_profit_order,
         MockBinanceApiTwoAvgAllOrders.take_profit_order("NEW")
       )
+    end
+  end
+
+  describe "&checkup_on_trade/1" do
+    test "uses api_module to checkup on trade and update state if needed" do
+      state = %State{
+        name: :mika_btc_usdt,
+        symbol: @symbol,
+        entry_price: 10_000.00,
+        filled?: true,
+        final_stop: 7_500.00,
+        first_avg: 9_000.00,
+        second_avg: 8_000.00,
+        take_profit_price: 12_500.00,
+        taken_first_avg?: false,
+        taken_second_avg?: false,
+        trade_in_progress?: true,
+        order_position: %State.OrderPosition{
+          entry_order: OrderGenerator.opened_position_order("BUY", "FILLED", @quantity, @price),
+          first_avg_order: OrderGenerator.open_limit_order("BUY", @quantity, @price),
+          second_avg_order: OrderGenerator.open_limit_order("BUY", @quantity, @price),
+          stop_order: OrderGenerator.open_stop_market_order("SELL", "NEW", @quantity, @price),
+          take_profit_order: OrderGenerator.open_take_profit_order("SELL", "NEW", @quantity, @price)
+        }
+      }
+
+      BinanceConnector.checkup_on_trade(state)
     end
   end
 

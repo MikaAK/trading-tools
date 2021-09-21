@@ -4,7 +4,7 @@ defmodule BinanceFuturesBot.TradeManager do
   use Supervisor
 
   alias BinanceFuturesBot.TradeManager
-  alias BinanceFuturesBot.TradeManager.{StateHistory, TradeMonitor, Server}
+  alias BinanceFuturesBot.TradeManager.{StateHistory, TradeServer}
 
   def start_link(opts \\ []) do
     if is_nil(opts[:name]), do: raise "must set name in options for BinanceFuturesBot.TradeManager"
@@ -18,8 +18,7 @@ defmodule BinanceFuturesBot.TradeManager do
     symbol = opts[:symbol]
 
     children = [
-      {Server, name: name, symbol: symbol},
-      {TradeMonitor, name: name},
+      {TradeServer, name: name, symbol: symbol},
       {StateHistory, name: name}
     ]
 
@@ -31,25 +30,23 @@ defmodule BinanceFuturesBot.TradeManager do
   def child_spec(opts), do: %{id: opts[:name], start: {TradeManager, :start_link, [opts]}}
 
   def get_current_state(name) do
-    Server.get_state(name)
+    TradeServer.get_state(name)
   end
 
   def create_reversal_short(name) do
-    open_and_monitor_trade(name, &Server.create_reversal_short/1, "REVERSAL_SHORT")
+    open_and_monitor_trade(name, &TradeServer.create_reversal_short/1, "REVERSAL_SHORT")
   end
 
   def create_reversal_long(name) do
-    open_and_monitor_trade(name, &Server.create_reversal_long/1, "REVERSAL_LONG")
+    open_and_monitor_trade(name, &TradeServer.create_reversal_long/1, "REVERSAL_LONG")
   end
 
   defp open_and_monitor_trade(name, trade_manager_fnc, history_type) do
     Logger.info("Creating #{history_type}...")
 
     case trade_manager_fnc.(name) do
-      {:ok, {:trade_in_progress, state}} = res ->
+      {:ok, {:trade_in_progress, _state}} = res ->
         Logger.info("Trade currently in progress, aborting...")
-
-        maybe_monitor_trade(name, state, history_type)
 
         res
 
@@ -58,23 +55,9 @@ defmodule BinanceFuturesBot.TradeManager do
 
         StateHistory.log_history(name, "#{history_type}_OPENED", state)
 
-        monitor_trade(name, state)
-
         res
 
       e -> e
     end
-  end
-
-  defp maybe_monitor_trade(name, state, history_type) do
-    if not TradeMonitor.active?(name) do
-      TradeMonitor.activate(name, state)
-
-      StateHistory.log_history(name, "#{history_type}_OPENED", state)
-    end
-  end
-
-  defp monitor_trade(name, state) do
-    TradeMonitor.activate(name, state)
   end
 end

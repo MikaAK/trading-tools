@@ -22,7 +22,7 @@ defmodule BinanceFuturesBot.Application do
   if Mix.env() === :test do
     defp trade_manager_children, do: []
   else
-    defp trade_manager_children, do: [{BinanceFuturesBot.TradeManager, name: :mika, symbol: "BTCUSDT"}]
+    defp trade_manager_children, do: [{BinanceFuturesBot.TradeManager, name: :mika_btc_usdt, symbol: "BTCUSDT"}]
   end
 
   # Tell Phoenix to update the endpoint configuration
