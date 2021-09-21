@@ -18,10 +18,13 @@ jobs:
         run: mix local.hex --force && mix local.rebar --force
         working-directory: ./binance_futures_bot
 
+      - name: Install Tar
+        run: apk add --no-cache tar
+
       - name: Cache Deps & Build
         uses: actions/cache@v2
         with:
-          key: ${{hashFiles('./binance_futures_bot/mix.lock')}}-deps-build-cache
+          key: ${{job.container.id}}-deps-build-cache
           path: |
             ./binance_futures_bot/deps
             ./binance_futures_bot/_build
