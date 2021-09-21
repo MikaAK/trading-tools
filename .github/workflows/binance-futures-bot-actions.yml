@@ -24,7 +24,7 @@ jobs:
       - name: Cache Deps & Build
         uses: actions/cache@v2
         with:
-          key: ${{job.container.id}}-deps-build-cache
+          key: ${{github.ref}}-deps-build-cache
           path: |
             ./binance_futures_bot/deps
             ./binance_futures_bot/_build
@@ -41,4 +41,3 @@ jobs:
       - name: Run Tests
         run: mix test
         working-directory: ./binance_futures_bot
-
