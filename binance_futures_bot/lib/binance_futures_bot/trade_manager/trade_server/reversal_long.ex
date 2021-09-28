@@ -6,7 +6,7 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer.ReversalLong do
 
   require Logger
 
-  alias BinanceFuturesBot.TradeManager.TradeServer.State
+  alias BinanceFuturesBot.TradeManager.TradeServer.{State, OrderManager}
 
   def run(%State{trade_in_progress?: true} = state) do
     Logger.info("Trade in progress")
@@ -37,7 +37,7 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer.ReversalLong do
   end
 
   def setup_trade(%State{leverage: leverage} = state, entry_price) do
-    {:ok, %{state |
+    new_state = %{state |
       entry_price: entry_price,
       final_stop: entry_price - percentage_with_leverage(entry_price, leverage, 0.25),
       first_avg: entry_price - percentage_with_leverage(entry_price, leverage, 0.10),
@@ -45,7 +45,11 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer.ReversalLong do
       take_profit_price: entry_price + percentage_with_leverage(entry_price, leverage, 0.15),
       trade_started_at: DateTime.utc_now(),
       trade_in_progress?: true
-    }}
+    }
+
+    with {:error, :can_not_place_trade} <- OrderManager.create_necessary_orders(new_state) do
+      {:ok, state}
+    end
   end
 
   defp percentage_with_leverage(entry_price, leverage, percentage) do

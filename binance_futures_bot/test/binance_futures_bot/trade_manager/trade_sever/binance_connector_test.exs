@@ -214,6 +214,7 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer.BinanceConnectorTest do
 
   describe "&checkup_on_trade/1" do
     test "uses api_module to checkup on trade and update state if needed" do
+      first_avg_order = MockBinanceApiOneAvgAllOrders.first_avg_order()
       state = %State{
         name: :mika_btc_usdt,
         symbol: @symbol,
@@ -230,13 +231,18 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer.BinanceConnectorTest do
         order_position: %State.OrderPosition{
           stop_order: MockBinanceApiOneAvgAllOrders.stop_order(),
           entry_order: MockBinanceApiOneAvgAllOrders.entry_order(),
-          first_avg_order: %{MockBinanceApiOneAvgAllOrders.first_avg_order() | "status" => "NEW"},
+          first_avg_order: %{first_avg_order | "status" => "NEW"},
           second_avg_order: MockBinanceApiOneAvgAllOrders.second_avg_order(),
           take_profit_order: MockBinanceApiOneAvgAllOrders.take_profit_order()
         }
       }
 
-      BinanceConnector.checkup_on_trade(state)
+      assert %State{
+        taken_first_avg?: true,
+        order_position: %State.OrderPosition{
+          first_avg_order: ^first_avg_order
+        }
+      } = BinanceConnector.checkup_on_trade(state)
     end
   end
 

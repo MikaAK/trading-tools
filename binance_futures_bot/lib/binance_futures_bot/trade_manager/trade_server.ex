@@ -62,7 +62,7 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer do
     {:reply, state, state}
   end
 
-  def handle_info(:checkup_on_trade, state) do
+  def handle_info(:checkup_on_trade, %State{} = state) do
     new_state = BinanceConnector.checkup_on_trade(state)
 
     case new_state do
@@ -71,8 +71,19 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer do
       %State{trade_in_progress?: false} ->
         StateHistory.log_history(state.name, "TRADE_ENDED", state)
 
-      %State{} ->
-        StateHistory.log_history(state.name, "TRADE_UPDATED", state)
+      %State{taken_first_avg?: true} when not state.taken_first_avg? ->
+        StateHistory.log_history(state.name, "FIRST_AVG_TAKEN", state)
+
+      %State{taken_second_avg?: true} when not state.taken_second_avg? ->
+        StateHistory.log_history(state.name, "SECOND_AVG_TAKEN", state)
+
+      %State{order_position: %State.OrderPosition{take_profit_order: %{"status" => "FILLED"}}} ->
+        StateHistory.log_history(state.name, "PROFIT_TAKEN", state)
+
+      %State{order_position: %State.OrderPosition{stop_order: %{"status" => "FILLED"}}} ->
+        StateHistory.log_history(state.name, "STOPPED_OUT", state)
     end
+
+    {:noreply, new_state}
   end
 end
