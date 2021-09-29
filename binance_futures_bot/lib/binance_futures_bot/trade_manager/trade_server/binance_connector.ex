@@ -31,6 +31,7 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer.BinanceConnector do
   defp create_state_from_position(state, %State.OrderPosition{} = position) do
     %{state |
       order_position: position,
+      side: position.entry_order["side"],
       trade_started_at: DateTime.from_unix!(position.entry_order["time"], :millisecond),
       entry_price: OrderManager.order_price(position.entry_order),
       filled?: order_filled?(position.entry_order),
@@ -68,27 +69,23 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer.BinanceConnector do
     all_trades
   ) do
     updated_order_positions = maybe_update_position_orders(order_position, all_trades)
+    new_state = create_state_from_position(state, updated_order_positions)
 
-    if updated_order_positions !== order_position do
-      new_state = create_state_from_position(state, updated_order_positions)
-
-      if take_profit_or_stop_filled?(new_state) do
-        OrderManager.close_all_positions_and_orders(new_state)
-      else
-        new_state
-      end
+    if take_profit_or_stop_filled?(new_state) do
+      OrderManager.close_all_positions_and_orders(new_state)
     else
-      state
+      new_state
     end
   end
 
   defp take_profit_or_stop_filled?(state) do
-    take_profit_filled? = OrderManager.filled?(state.order_positions.take_profit_order)
-    stop_filled? = OrderManager.filled?(state.order_positions.stop_order)
+    take_profit_filled? = OrderManager.filled?(state.order_position.take_profit_order)
+    stop_filled? = OrderManager.filled?(state.order_position.stop_order)
 
     cond do
       take_profit_filled? -> Logger.info("Trade Won")
       stop_filled? -> Logger.info("Trade Stopped Out")
+      true -> true
     end
 
     take_profit_filled? or stop_filled?
@@ -109,15 +106,32 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer.BinanceConnector do
     order_position = Map.get(order_positions, order_key)
 
     case all_trades_by_id[order_position["order_id"]] do
-      ^order_position ->
-        Logger.debug("[TradeServer.BinanceConnector] Nothing changed in trade")
-
-        order_positions
+      ^order_position -> order_positions
 
       updated_order ->
-        Logger.debug("[TradeServer.BinanceConnector] Position #{order_key} updated\nOrder: #{inspect updated_order}")
+        Logger.debug("[TradeServer.BinanceConnector] Position #{order_key} updated\n#{humanize_order(updated_order)}")
 
         Map.put(order_positions, order_key, updated_order)
     end
+  end
+
+  defp humanize_order(order) do
+    """
+    Order ID: #{order["order_id"]}
+    Time: #{humanize_time(order["time"] || order["update_time"])}
+    Type: #{order["type"]}
+    Avg Fill Price: #{order["avg_price"]}
+    Asked Price: #{order["price"]}
+    Executed Quantity: #{order["executed_qty"]}
+    Original Quantity: #{order["orig_qty"]}
+    """
+  end
+
+  defp humanize_time(nil) do
+    ""
+  end
+
+  defp humanize_time(unix_time) do
+    Calendar.strftime(DateTime.from_unix!(unix_time, :millisecond), "%c")
   end
 end

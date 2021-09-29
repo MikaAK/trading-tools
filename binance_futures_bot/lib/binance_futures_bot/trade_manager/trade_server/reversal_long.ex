@@ -20,7 +20,7 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer.ReversalLong do
     api_module: api_module,
     api_opts: api_opts
   } = state) do
-    Logger.info("Starting reversal long #{inspect state}")
+    Logger.info("Starting reversal long for #{state.name}")
 
     case api_module.futures_ticker_price(symbol, api_opts) do
       {:ok, %{"price" => price}} ->
@@ -38,11 +38,12 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer.ReversalLong do
 
   def setup_trade(%State{leverage: leverage} = state, entry_price) do
     new_state = %{state |
+      side: "BUY",
       entry_price: entry_price,
-      final_stop: entry_price - percentage_with_leverage(entry_price, leverage, 0.25),
-      first_avg: entry_price - percentage_with_leverage(entry_price, leverage, 0.10),
-      second_avg: entry_price - percentage_with_leverage(entry_price, leverage, 0.20),
-      take_profit_price: entry_price + percentage_with_leverage(entry_price, leverage, 0.15),
+      final_stop: round_float(entry_price - percentage_with_leverage(entry_price, leverage, 0.20)),
+      first_avg: round_float(entry_price - percentage_with_leverage(entry_price, leverage, 0.10)),
+      second_avg: round_float(entry_price - percentage_with_leverage(entry_price, leverage, 0.20)),
+      take_profit_price: round_float(entry_price + percentage_with_leverage(entry_price, leverage, 0.25)),
       trade_started_at: DateTime.utc_now(),
       trade_in_progress?: true
     }
@@ -55,4 +56,6 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer.ReversalLong do
   defp percentage_with_leverage(entry_price, leverage, percentage) do
     entry_price * percentage / leverage
   end
+
+  defp round_float(float), do: Float.round(float, 2)
 end

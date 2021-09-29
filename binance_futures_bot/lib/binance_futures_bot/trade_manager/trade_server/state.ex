@@ -16,7 +16,7 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer.State do
     :order_position,
     api_module: BinanceApi,
     api_opts: [],
-    trade_max: 100,
+    trade_max: 30,
     leverage: 100,
     trade_in_progress?: false,
     taken_first_avg?: false,

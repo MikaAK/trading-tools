@@ -1,10 +1,17 @@
 defmodule BinanceFuturesBot.TradeManager.TradeServer do
+  require Logger
+
   use GenServer
 
   alias BinanceFuturesBot.TradeManager.{TradeServer, StateHistory}
-  alias BinanceFuturesBot.TradeManager.TradeServer.{State, ReversalLong, ReversalShort, BinanceConnector}
+  alias BinanceFuturesBot.TradeManager.TradeServer.{
+    State,
+    ReversalLong, ReversalShort,
+    BinanceConnector, OrderManager
+  }
 
   @check_interval :timer.seconds(1)
+  @timeout :timer.seconds(60)
 
   def start_link(opts \\ []) do
     GenServer.start_link(TradeServer, opts, Keyword.update!(opts, :name, &server_name/1))
@@ -24,15 +31,19 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer do
   def server_name(name), do: :"trade_manager_server_#{name}"
 
   def create_reversal_short(server) do
-    GenServer.call(server_name(server), :reversal_short)
+    GenServer.call(server_name(server), :reversal_short, @timeout)
   end
 
   def create_reversal_long(server) do
-    GenServer.call(server_name(server), :reversal_long)
+    GenServer.call(server_name(server), :reversal_long, @timeout)
   end
 
   def get_state(server) do
-    GenServer.call(server_name(server), :get_state)
+    GenServer.call(server_name(server), :get_state, @timeout)
+  end
+
+  def close_current_trade(server) do
+    GenServer.call(server_name(server), :close_current_trade, @timeout)
   end
 
   def handle_continue(opts, _) do
@@ -56,6 +67,12 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer do
     {reply, state} = ReversalShort.run(state)
 
     {:reply, reply, state}
+  end
+
+  def handle_call(:close_current_trade, _, state) do
+    state = OrderManager.close_all_positions_and_orders(state)
+
+    {:reply, state, state}
   end
 
   def handle_call(:get_state, _, state) do
@@ -82,6 +99,13 @@ defmodule BinanceFuturesBot.TradeManager.TradeServer do
 
       %State{order_position: %State.OrderPosition{stop_order: %{"status" => "FILLED"}}} ->
         StateHistory.log_history(state.name, "STOPPED_OUT", state)
+
+      %State{order_position: %State.OrderPosition{entry_order: %{"status" => "FILLED"}}} ->
+        StateHistory.log_history(state.name, "ENTRY_FILLED", state)
+
+      state ->
+        Logger.warn("[TradeServer] Unhandled trade change #{inspect state}")
+        StateHistory.log_history(state.name, "UNKNOWN", state)
     end
 
     {:noreply, new_state}

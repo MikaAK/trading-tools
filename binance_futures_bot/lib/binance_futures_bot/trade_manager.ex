@@ -50,8 +50,13 @@ defmodule BinanceFuturesBot.TradeManager do
 
         res
 
+      {:ok, %TradeServer.State{trade_in_progress?: false}} = res ->
+        Logger.warn("Couldn't start trade for #{name}")
+
+        res
+
       {:ok, state} = res ->
-        Logger.info("Started trade:\n#{inspect state}")
+        Logger.info("Started trade for #{name}")
 
         StateHistory.log_history(name, "#{history_type}_OPENED", state)
 
